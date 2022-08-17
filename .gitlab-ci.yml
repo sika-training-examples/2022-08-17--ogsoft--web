@@ -33,7 +33,7 @@ build:
         --key image \
         --value $IMAGE
     - git add .
-    - git commit -m "[auto] feat(apps/$ENV/web) Update image to $IMAGE"
+    - git commit -m "[auto] feat(apps/$ENV/web) Update image to $IMAGE by @$GITLAB_USER_LOGIN ($GITLAB_USER_NAME)"
     - git push origin master
 
 deploy dev:
