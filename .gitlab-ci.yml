@@ -2,6 +2,7 @@ image: sikalabs/ci
 
 stages:
     - build
+    - deploy prod
 
 variables:
     IMAGE_DEV: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
@@ -14,3 +15,32 @@ build:
         - docker build -t $IMAGE_DEV -t $IMAGE_PROD .
         - docker push $IMAGE_DEV
         - docker push $IMAGE_PROD
+
+.deploy: &deploy
+  image: sikalabs/ci
+  variables: &deploy_variables
+    GIT_AUTHOR_NAME: SikaLabs CI Bot
+    GIT_COMMITTER_NAME: SikaLabs CI Bot
+    GIT_COMMITTER_EMAIL: ci-bot@sikalabs.io
+    GIT_AUTHOR_EMAIL: ci-bot@sikalabs.io
+  script:
+    - mkdir -p ~/.ssh && cp $SSH ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -t rsa gitlab.sikademo.com >> ~/.ssh/known_hosts
+    - git clone git@gitlab.sikademo.com:ondrejsika/argocd-apps-ogsoft-demo.git argocd-apps
+    - cd argocd-apps
+    - |
+      slu argocd set-image \
+        --file apps/$ENV/web.yml \
+        --key image \
+        --value $IMAGE_PROD
+    - git add .
+    - git commit -m "[auto] feat(apps/$ENV/web) Update image to $IMAGE_PROD"
+    - git push origin master
+
+deploy prod:
+  <<: *deploy
+  variables:
+    <<: *deploy_variables
+    ENV: prod
+  stage: deploy prod
+  when: manual
