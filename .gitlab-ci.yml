@@ -2,19 +2,18 @@ image: sikalabs/ci
 
 stages:
     - build
+    - deploy dev
     - deploy prod
 
 variables:
-    IMAGE_DEV: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-    IMAGE_PROD: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA-$CI_PIPELINE_ID
+    IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA-$CI_PIPELINE_ID
 
 build:
     stage: build
     script:
         - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
-        - docker build -t $IMAGE_DEV -t $IMAGE_PROD .
-        - docker push $IMAGE_DEV
-        - docker push $IMAGE_PROD
+        - docker build -t $IMAGE .
+        - docker push $IMAGE
 
 .deploy: &deploy
   image: sikalabs/ci
@@ -32,10 +31,17 @@ build:
       slu argocd set-image \
         --file apps/$ENV/web.yml \
         --key image \
-        --value $IMAGE_PROD
+        --value $IMAGE
     - git add .
-    - git commit -m "[auto] feat(apps/$ENV/web) Update image to $IMAGE_PROD"
+    - git commit -m "[auto] feat(apps/$ENV/web) Update image to $IMAGE"
     - git push origin master
+
+deploy dev:
+  <<: *deploy
+  variables:
+    <<: *deploy_variables
+    ENV: dev
+  stage: deploy dev
 
 deploy prod:
   <<: *deploy
